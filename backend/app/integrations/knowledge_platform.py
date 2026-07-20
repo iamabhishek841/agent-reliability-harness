@@ -3,6 +3,7 @@ from functools import lru_cache
 from typing import Any
 
 import psycopg
+from pgvector import Vector
 from pgvector.psycopg import register_vector
 from psycopg.rows import dict_row
 
@@ -16,6 +17,11 @@ def _embedding_model(model_name: str):
     return TextEmbedding(model_name=model_name, cache_dir=os.getenv("FASTEMBED_CACHE_PATH"))
 
 
+def _database_vector(embedding: Any) -> Vector:
+    """Keep query parameters on pgvector's adapter instead of PostgreSQL arrays."""
+    return Vector(embedding)
+
+
 class KnowledgePlatformClient:
     def __init__(self, database_url: str, embedding_model: str, timeout_seconds: float = 4.0):
         self.database_url = database_url
@@ -25,7 +31,7 @@ class KnowledgePlatformClient:
     def search(self, query: str, limit: int = 4) -> list[dict[str, Any]]:
         stale_hours = apply_faults("knowledge_platform", self.timeout_seconds)
         try:
-            embedding = next(iter(_embedding_model(self.embedding_model).embed([query]))).tolist()
+            embedding = _database_vector(next(iter(_embedding_model(self.embedding_model).embed([query]))))
             with psycopg.connect(self.database_url, connect_timeout=max(1, int(self.timeout_seconds)), row_factory=dict_row) as connection:
                 register_vector(connection)
                 rows = connection.execute(
