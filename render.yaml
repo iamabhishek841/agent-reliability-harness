@@ -11,7 +11,15 @@ services:
       - key: APP_ENV
         value: production
       - key: LLM_PROVIDER
-        value: rules
+        value: groq
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: GROQ_API_KEY
+        sync: false
+      - key: LLM_INPUT_COST_PER_MILLION_USD
+        value: "0.075"
+      - key: LLM_OUTPUT_COST_PER_MILLION_USD
+        value: "0.30"
       - key: API_AUTH_TOKEN
         sync: false
       - key: LEGACY_DATABASE_URL
@@ -20,3 +28,4 @@ services:
         sync: false
       - key: CHAOS_STATE_PATH
         value: /tmp/chaos-state.json
+
