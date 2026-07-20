@@ -4,6 +4,8 @@ The repository is deployment-ready but intentionally contains no account credent
 
 ## 1. Neon or Supabase
 
+For Neon, create two projects in the same region to preserve failure-domain and schema isolation. Add their pooled connection strings as GitHub Actions secrets named `LEGACY_DATABASE_URL` and `KNOWLEDGE_DATABASE_URL`, then run the `provision-neon` workflow manually. The workflow applies both schemas, seeds the deterministic legacy fixture, ingests the policy corpus, and fails unless the expected row counts and 384-dimensional vectors are present.
+
 Create two databases (or two isolated projects) so failure and ownership boundaries remain real. Enable `vector` in the knowledge database.
 
 ```bash
