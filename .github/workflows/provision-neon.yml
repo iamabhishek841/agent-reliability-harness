@@ -1,0 +1,26 @@
+name: provision-neon
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install provisioning dependencies
+        run: pip install -r requirements-ci.txt -r db/knowledge_platform/requirements.txt
+      - name: Apply schemas, seed CRM, and ingest policy vectors
+        env:
+          LEGACY_DATABASE_URL: ${{ secrets.LEGACY_DATABASE_URL }}
+          KNOWLEDGE_DATABASE_URL: ${{ secrets.KNOWLEDGE_DATABASE_URL }}
+          FASTEMBED_CACHE_PATH: /tmp/fastembed-cache
+        run: python scripts/provision_neon.py
