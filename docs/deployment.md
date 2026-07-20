@@ -27,7 +27,7 @@ Do not collapse both systems into one schema for convenience. Use pooled applica
 
 The committed free-tier Blueprint deploys in Frankfurt with the deterministic `rules` provider so a missing third-party LLM key cannot block or silently degrade the first public release. To enable Groq after the baseline is healthy, add `GROQ_API_KEY` as a Render secret and change `LLM_PROVIDER` to `groq`; the LLM remains an explanation layer and cannot override the deterministic action gate.
 
-Connect the repository and apply `render.yaml`. Set `LEGACY_DATABASE_URL`, `KNOWLEDGE_DATABASE_URL`, and a randomly generated `API_AUTH_TOKEN` as secret environment variables. Keep `LLM_PROVIDER=rules` for the deterministic baseline. Verify `/health`, then `/ready`, then call `/v1/agent/invoke` with the token in the `X-API-Key` header. To enable generated wording later, add `GROQ_API_KEY` and change only `LLM_PROVIDER` to `groq`.
+Connect the repository and apply `render.yaml`. Set `LEGACY_DATABASE_URL`, `KNOWLEDGE_DATABASE_URL`, `GROQ_API_KEY`, and a randomly generated `API_AUTH_TOKEN` as secret environment variables. Verify `/health`, then `/ready`, then call `/v1/agent/invoke` with the token in the `X-API-Key` header. The same token can be supplied as `Authorization: Bearer <token>` by hosted telemetry scrapers; the production `/metrics` endpoint rejects unauthenticated requests. The hosted model defaults to `openai/gpt-oss-20b`, while the deterministic rules engine remains authoritative for decisions and actions.
 
 For Google Cloud Run instead, build `backend/Dockerfile`, deploy port 8000, and store secrets in Secret Manager. The service needs outbound access to both databases and Groq.
 
@@ -46,3 +46,4 @@ Choose `frontend/streamlit_app.py` as the entry point. Set `BACKEND_URL` to the 
 ## Free-tier trade-offs
 
 Render, Cloud Run, Neon, Supabase, Groq, and Streamlit free offerings can change and may sleep, throttle, or cold-start. Expect the first request after inactivity to be materially slower, and set the UI timeout above the backend's integration budget. Free-tier databases may cap connections; use pooling. Sentence-transformer image builds are large, so prebuild and cache the image where possible. Reconfirm current limits with each provider before a public demo.
+
