@@ -20,6 +20,8 @@ Do not collapse both systems into one schema for convenience. Use pooled applica
 
 ## 2. Render
 
+The committed free-tier Blueprint deploys in Frankfurt with the deterministic `rules` provider so a missing third-party LLM key cannot block or silently degrade the first public release. To enable Groq after the baseline is healthy, add `GROQ_API_KEY` as a Render secret and change `LLM_PROVIDER` to `groq`; the LLM remains an explanation layer and cannot override the deterministic action gate.
+
 Connect the repository and apply `render.yaml`. Set `LEGACY_DATABASE_URL`, `KNOWLEDGE_DATABASE_URL`, `GROQ_API_KEY`, and a randomly generated `API_AUTH_TOKEN` as secret environment variables. Leave `LLM_PROVIDER=groq`. Verify `/health`, then `/ready`, then call `/v1/agent/invoke` with the token in the `X-API-Key` header.
 
 For Google Cloud Run instead, build `backend/Dockerfile`, deploy port 8000, and store secrets in Secret Manager. The service needs outbound access to both databases and Groq.
