@@ -8,6 +8,13 @@ Enterprise AI agents often work in demos and fail after they meet real systems. 
 
 The harness answers refund questions across two deliberately inconsistent Postgres systems. A three-node LangGraph retrieves evidence, evaluates auditable eligibility rules, and either calls an idempotent mock refund action, records a reliable denial, or escalates. Ollama or Groq may turn the immutable decision record into customer-friendly wording, but cannot modify the decision or action gate. Latency, revoked access, stale synchronization, ambiguous identity, missing fields, high-value orders, and prompt-injection attempts all fail closed.
 
+## Live deployment
+
+- **Streamlit application:** [agent-reliability-harness.streamlit.app](https://agent-reliability-harness.streamlit.app/)
+- **FastAPI backend:** [agent-reliability-backend.onrender.com](https://agent-reliability-backend.onrender.com/health)
+
+The public baseline runs in Frankfurt on Render's free tier with two isolated Neon projects and the deterministic `rules` provider. A post-deploy smoke test retrieved pgvector policy evidence, approved `ORD-ELIGIBLE-001` at 91% confidence, executed the idempotent mock action, and exposed three citations with no integration errors. The first production request also revealed a Psycopg/pgvector adapter mismatch; fail-closed escalation contained the error, and the permanent regression and incident narrative are in `eval/`.
+
 ## Architecture
 
 ```mermaid
@@ -167,8 +174,8 @@ Then I injected the failures I would expect in production: a dependency exceedin
 
 **How would you prove the system improved?** Compare exact decision pass rate, adversarial and chaos escape rate, escalation precision, p95 latency, integration error recovery, and action reconciliation before and after each control. Keep the labeled failures as permanent regression cases.
 
-**What remains demo-grade?** In-memory conversation state, a process-local mock action, file-based fault injection, console trace export, synthetic enterprise systems, and unprovisioned external accounts. The deployment runbook names the production replacements.
+**What remains demo-grade?** In-memory conversation state, a process-local mock action, file-based fault injection, console trace export, synthetic enterprise systems, a rules-only hosted baseline, and no managed public Grafana/OTLP backend. The deployment runbook names the production replacements.
 
 ## Deployment status
 
-`render.yaml`, container definitions, environment contracts, database migration commands, and Streamlit configuration are included. A public URL is not fabricated: deployment needs the operator's Neon/Supabase, Render/Cloud Run, Streamlit, and Groq credentials. Follow [docs/deployment.md](docs/deployment.md), which also documents free-tier cold starts, throttling, connection caps, and the required post-deploy checks.
+The system is publicly deployed through two isolated Neon databases, a Frankfurt Render service, and Streamlit Community Cloud. Connection strings and the shared API token live only in encrypted provider secrets. The hosted baseline deliberately uses deterministic rules until a Groq key is supplied; enabling Groq changes explanation wording, not the governed decision or action gate. Follow [docs/deployment.md](docs/deployment.md) for provisioning, secret rotation, free-tier cold starts, and post-deploy checks.
