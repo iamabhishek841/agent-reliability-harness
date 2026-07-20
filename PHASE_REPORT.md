@@ -62,9 +62,9 @@ Generated 2026-07-19. This report distinguishes static/local verification from c
 
 **Built:** Streamlit chat, thread continuity, order identity input, expandable evidence trace, operational summary metrics, Render blueprint, and a Neon/Supabase + Render/Cloud Run + Streamlit runbook.
 
-**Tested:** Python compilation and environment/secret separation.
+**Tested:** The `provision-neon` workflow completed in 45 seconds and verified 122 customers, 140 orders, 45 refunds, 12 policy documents/chunks, and 384-dimensional embeddings. Render `/health` returned 200, and an authenticated request returned the expected 91%-confidence approval with three policy citations and no integration errors. The Streamlit UI reproduced the decision and exposed its evidence trace.
 
-**Known limitation:** No external accounts or credentials were provided, so no public URL was provisioned. Free-tier cold starts are documented.
+**Known limitation:** The public baseline uses deterministic rules until a Groq key is added. Render and Neon may cold-start after inactivity, and Grafana remains part of the local Compose stack rather than a public managed deployment.
 
 ## Phase 9 — Documentation
 
@@ -76,8 +76,8 @@ Generated 2026-07-19. This report distinguishes static/local verification from c
 
 The exact command outputs are summarized here after local execution:
 
-- `python scripts/verify_project.py`: passed all seven repository invariants (30 cases, 12 policy documents, three failure logs, eight dashboard panels, required files, Python compilation, and no committed `.env`).
-- `pytest -q eval`: 34 passed, including exact labeled outcomes, deterministic messy seed shape, policy corpus, and two-turn LangGraph state persistence.
+- `python scripts/verify_project.py`: passed all seven repository invariants (30 cases, 12 policy documents, four failure logs, eight dashboard panels, required files, Python compilation, and no committed `.env`).
+- `pytest -q eval`: 35 passed, including exact labeled outcomes, deterministic messy seed shape, policy corpus, pgvector parameter adaptation, and two-turn LangGraph state persistence.
 - `python eval/run_eval.py`: 30/30 cases passed; pass rate 1.0.
 - `ruff check backend db chaos eval frontend scripts`: all checks passed.
 - FastAPI smoke: `/health` and `/metrics` returned 200; repeated `/v1/refunds/mock` calls returned the same idempotent action result.
