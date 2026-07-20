@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     groq_api_key: str | None = None
     api_auth_token: str | None = None
-    groq_model: str = "llama-3.1-8b-instant"
+    groq_model: str = "openai/gpt-oss-20b"
     llm_input_cost_per_million_usd: float = Field(default=0.0, ge=0.0)
     llm_output_cost_per_million_usd: float = Field(default=0.0, ge=0.0)
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
@@ -33,3 +33,4 @@ class Settings(BaseSettings):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
+
