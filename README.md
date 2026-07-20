@@ -13,7 +13,7 @@ The harness answers refund questions across two deliberately inconsistent Postgr
 - **Streamlit application:** [agent-reliability-harness.streamlit.app](https://agent-reliability-harness.streamlit.app/)
 - **FastAPI backend:** [agent-reliability-backend.onrender.com](https://agent-reliability-backend.onrender.com/health)
 
-The public baseline runs in Frankfurt on Render's free tier with two isolated Neon projects and the deterministic `rules` provider. A post-deploy smoke test retrieved pgvector policy evidence, approved `ORD-ELIGIBLE-001` at 91% confidence, executed the idempotent mock action, and exposed three citations with no integration errors. The first production request also revealed a Psycopg/pgvector adapter mismatch; fail-closed escalation contained the error, and the permanent regression and incident narrative are in `eval/`.
+The public deployment runs in Frankfurt on Render's free tier with two isolated Neon projects and Groq's `openai/gpt-oss-20b` model for customer-facing explanations. Deterministic policy controls remain authoritative for decisions and actions. A post-deploy smoke test retrieved pgvector evidence, approved `ORD-ELIGIBLE-001` at 91% confidence, executed the idempotent mock action, and returned three citations with no integration errors. The first production request also exposed a Psycopg/pgvector adapter mismatch; fail-closed escalation contained the error, and the permanent regression and incident record are in `eval/`.
 
 ## Architecture
 
@@ -25,7 +25,7 @@ flowchart LR
     G --> LLM["Ollama / Groq\nwording only"]
     A -->|"approve + threshold"| REF["Idempotent mock refund"]
     A -->|"unreliable / low confidence"| HUMAN["Human escalation"]
-    CHAOS["Latency · 403 · stale sync"] -.-> CRM
+    CHAOS["Latency / 403 / stale sync"] -.-> CRM
     CHAOS -.-> KP
     API --> OTEL["OpenTelemetry + structlog"]
     API --> PROM["Prometheus"] --> GRAF["Grafana"]
@@ -70,7 +70,7 @@ python eval/run_eval.py --ragas
 python eval/run_eval.py --live --base-url http://localhost:8000 --ragas
 ```
 
-## Why this was hard
+## Reliability model
 
 ### Identity is not a join key
 
@@ -100,7 +100,7 @@ The UI exposes retrieved sources, source age, checks, reason code, confidence, a
 | Ragas plus custom pytest gates | Ragas measures grounded response quality while tests enforce exact business outcomes | Ragas is model-judged and slower, so it supplements rather than blocks core correctness by default |
 | File-controlled chaos | Reproducible and easy to demonstrate without a paid proxy | Toxiproxy or service-mesh faults would model network behavior more faithfully |
 
-## Chaos testing: the centerpiece
+## Chaos testing
 
 ### Latency beyond budget
 
@@ -125,7 +125,7 @@ python chaos/reset.py
 
 ## Evaluation results
 
-The labeled set contains 30 scenarios: ordinary approvals, evidence-backed denials, identity/retrieval/exception cases, five adversarial attempts, and five chaos cases. Exact outcome and reason-code assertions run without an LLM, so a model upgrade cannot make CI flaky or silently weaken a safety rule. The verified run passed all 30 labeled scenarios and all 34 pytest tests; exact commands are recorded in [PHASE_REPORT.md](PHASE_REPORT.md).
+The labeled set contains 30 scenarios: ordinary approvals, evidence-backed denials, identity/retrieval/exception cases, five adversarial attempts, and five chaos cases. Exact outcome and reason-code assertions run without an LLM, so a model upgrade cannot make CI flaky or silently weaken a safety rule. The current verified suite passes all 30 labeled scenarios and 37 pytest tests; phase-level verification commands are recorded in [PHASE_REPORT.md](PHASE_REPORT.md).
 
 The adversarial cases revealed the most important architectural lesson: prompt wording is not a sufficient control. Phrases that ask the system to ignore policy, reveal the system prompt, enter developer mode, or impersonate approval are detected, but the real protection is that the action decision lives outside generated text.
 
@@ -133,49 +133,22 @@ GitHub Actions compiles the Python tree, runs Ruff, validates the Compose manife
 
 ## Observability and support workflow
 
-Every graph node emits an OpenTelemetry span. Prometheus collects outcomes, error classes by integration, end-to-end and per-node histograms, escalations, active requests, confidence, token estimates, and a provider cost estimate. Grafana is provisioned automatically. `structlog` events use stable `reason_code` values, which lets a support owner go from an escalation-rate spike to the dependency and control that produced it.
+Every graph node emits an OpenTelemetry span. Prometheus collects outcomes, error classes by integration, end-to-end and per-node histograms, escalations, active requests, confidence, token estimates, and a provider cost estimate. Local Grafana is provisioned automatically through Compose. The hosted deployment exposes `/metrics` only to authenticated Bearer-token scrapers and sends samples to Grafana Cloud. Import [the cloud dashboard](observability/grafana/dashboards/agent_overview_cloud.json) to visualize eight reliability panels with a Grafana Cloud Prometheus data source. `structlog` events use stable `reason_code` values, which lets an operator move from an escalation-rate spike to the dependency and control that produced it.
 
 The development environment exports spans to structured console output. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to send them to an OTLP-compatible collector. Secrets, connection strings, personal addresses, and private chain-of-thought are excluded by design.
 
-## What I would build differently at greater scale
+## Production limitations and roadmap
 
 - Replace the in-memory checkpointer and mock action store with durable Postgres/Redis state and an outbox-backed action service.
 - Put refund actions on a real message queue with idempotent consumers, reconciliation, and compensating workflows.
 - Use a secrets manager, workload identity, rotation, and scoped service accounts instead of `.env` in hosted environments.
 - Consume CDC watermarks rather than a synthetic lag value; define freshness SLOs per table and policy partition.
-- Add an OpenTelemetry Collector, trace backend, cross-service correlation IDs, tail sampling, and alert routing.
+- Export hosted OpenTelemetry spans to a managed trace backend; add cross-service correlation IDs, tail sampling, and alert routing.
 - Run network faults through Toxiproxy or a service mesh and test partial packet loss, connection resets, and retry storms.
 - Create a governed policy compiler with dual approval, effective-date simulation, and signed decision bundles.
 - Separate online smoke gates, deterministic policy regression, retrieval benchmarks, model-judged evaluation, and shadow-production evaluation.
 
-## Ready-to-speak interview narratives
-
-### 30 seconds
-
-“I built a reliability harness for an AI refund agent connected to two intentionally inconsistent enterprise systems. The main lesson was that model quality was not the failure: identity mismatches, stale policy sync, and revoked access were. I split retrieval, reasoning, and action in LangGraph, made source health and freshness block financial actions, added 30 deterministic regression cases plus Ragas, and instrumented every node with OpenTelemetry, Prometheus, and Grafana. Under latency, 403, or stale data, it escalates with traceable evidence instead of giving a confident wrong answer.”
-
-### Two minutes
-
-“I started with a deliberately ugly integration boundary: a legacy CRM with duplicate customers, nullable external order IDs, orphan refund records, and stale timestamps, plus a modern pgvector policy store with a completely different identity and versioning model. A plausible demo would just retrieve both and ask an LLM to decide, but that makes the riskiest behavior nondeterministic.
-
-I used LangGraph to isolate retrieval, deterministic eligibility reasoning, and side effects. The adapters preserve typed failures and freshness instead of converting them to empty results. The rules produce an immutable decision record; Ollama locally or Groq in a hosted demo can explain that record, but cannot change it. The action node independently enforces confidence and idempotency.
-
-Then I injected the failures I would expect in production: a dependency exceeding its latency budget, CRM credentials revoked after a successful turn, and a policy snapshot 24 hours behind. Each initially exposed a different observability or control gap. I recorded the diagnosis and before/after behavior as incident narratives, then added exact regression cases. Finally, I added spans per graph node, stable structured reason codes, Prometheus metrics, and a provisioned Grafana dashboard. The result is not just an agent that works; it is a system an on-call engineer can understand, stop, and improve.”
-
-### Likely questions
-
-**Why not let the LLM make the refund decision?** Financial side effects need reproducible controls. The LLM is useful for language and ambiguous evidence synthesis, but the eligible states, freshness threshold, value cap, and action threshold are governed code.
-
-**Why use LangGraph instead of one function?** The graph gives each risk boundary an explicit state transition, span, test seam, and ownership point. For a toy flow one function is simpler; for multi-turn operations and side effects, the explicit graph pays for itself.
-
-**How did you handle hallucinations?** I constrained the model to wording an already-computed decision, retained citations, blocked actions on missing evidence, and tested exact outcome/reason pairs. Ragas measures qualitative groundedness but does not replace deterministic controls.
-
-**What was the hardest bug?** Staleness looked like success. The retrieved policy was relevant, the query succeeded, and only the synchronization timestamp showed that it could be wrong. Treating freshness as a first-class decision input fixed it.
-
-**How would you prove the system improved?** Compare exact decision pass rate, adversarial and chaos escape rate, escalation precision, p95 latency, integration error recovery, and action reconciliation before and after each control. Keep the labeled failures as permanent regression cases.
-
-**What remains demo-grade?** In-memory conversation state, a process-local mock action, file-based fault injection, console trace export, synthetic enterprise systems, a rules-only hosted baseline, and no managed public Grafana/OTLP backend. The deployment runbook names the production replacements.
-
 ## Deployment status
 
-The system is publicly deployed through two isolated Neon databases, a Frankfurt Render service, and Streamlit Community Cloud. Connection strings and the shared API token live only in encrypted provider secrets. The hosted baseline deliberately uses deterministic rules until a Groq key is supplied; enabling Groq changes explanation wording, not the governed decision or action gate. Follow [docs/deployment.md](docs/deployment.md) for provisioning, secret rotation, free-tier cold starts, and post-deploy checks.
+The system is publicly deployed through two isolated Neon databases, a Frankfurt Render service, Streamlit Community Cloud, Groq, and Grafana Cloud Metrics. Connection strings, Groq credentials, and the shared API token live only in encrypted provider secrets. The hosted model changes explanation wording, not the governed decision or action gate. Hosted OpenTelemetry spans are not yet exported to a managed trace backend. Follow [docs/deployment.md](docs/deployment.md) for provisioning, secret rotation, authenticated metrics scraping, free-tier cold starts, and post-deploy checks.
+
