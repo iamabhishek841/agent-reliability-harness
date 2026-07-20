@@ -69,9 +69,15 @@ class MockRefundRequest(BaseModel):
     order_ref: str = Field(min_length=3, max_length=100)
 
 
-def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
-    """Protect cost-bearing and side-effecting endpoints when a token is configured."""
-    if settings.api_auth_token and (not x_api_key or not compare_digest(x_api_key, settings.api_auth_token)):
+def require_api_key(x_api_key: str | None = Header(default=None), authorization: str | None = Header(default=None)) -> None:
+    """Accept the server-side API key as X-API-Key or an RFC 6750 Bearer token."""
+    bearer_token = None
+    if authorization:
+        scheme, separator, credential = authorization.partition(" ")
+        if separator and scheme.lower() == "bearer":
+            bearer_token = credential.strip()
+    presented_token = x_api_key or bearer_token
+    if settings.api_auth_token and (not presented_token or not compare_digest(presented_token, settings.api_auth_token)):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
@@ -123,6 +129,7 @@ def mock_refund(request: MockRefundRequest) -> dict[str, str]:
     return process_mock_refund(request.order_ref)
 
 
-@app.get("/metrics")
+@app.get("/metrics", dependencies=[Depends(require_api_key)])
 def prometheus_metrics() -> Response:
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
