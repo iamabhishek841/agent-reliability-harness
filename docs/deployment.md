@@ -1,6 +1,11 @@
 # Free-tier deployment runbook
 
-The repository is deployment-ready but intentionally contains no account credentials and makes no claim that a public environment exists. Provisioning the external accounts is an operator action.
+The verified public environment uses two Neon projects in Frankfurt, a free Render backend, and Streamlit Community Cloud. No account credentials are committed; database URLs, the API token, and optional model keys remain encrypted provider secrets.
+
+| Component | Public endpoint |
+|---|---|
+| Streamlit | https://agent-reliability-harness.streamlit.app/ |
+| FastAPI health | https://agent-reliability-backend.onrender.com/health |
 
 ## 1. Neon or Supabase
 
@@ -22,7 +27,7 @@ Do not collapse both systems into one schema for convenience. Use pooled applica
 
 The committed free-tier Blueprint deploys in Frankfurt with the deterministic `rules` provider so a missing third-party LLM key cannot block or silently degrade the first public release. To enable Groq after the baseline is healthy, add `GROQ_API_KEY` as a Render secret and change `LLM_PROVIDER` to `groq`; the LLM remains an explanation layer and cannot override the deterministic action gate.
 
-Connect the repository and apply `render.yaml`. Set `LEGACY_DATABASE_URL`, `KNOWLEDGE_DATABASE_URL`, `GROQ_API_KEY`, and a randomly generated `API_AUTH_TOKEN` as secret environment variables. Leave `LLM_PROVIDER=groq`. Verify `/health`, then `/ready`, then call `/v1/agent/invoke` with the token in the `X-API-Key` header.
+Connect the repository and apply `render.yaml`. Set `LEGACY_DATABASE_URL`, `KNOWLEDGE_DATABASE_URL`, and a randomly generated `API_AUTH_TOKEN` as secret environment variables. Keep `LLM_PROVIDER=rules` for the deterministic baseline. Verify `/health`, then `/ready`, then call `/v1/agent/invoke` with the token in the `X-API-Key` header. To enable generated wording later, add `GROQ_API_KEY` and change only `LLM_PROVIDER` to `groq`.
 
 For Google Cloud Run instead, build `backend/Dockerfile`, deploy port 8000, and store secrets in Secret Manager. The service needs outbound access to both databases and Groq.
 
