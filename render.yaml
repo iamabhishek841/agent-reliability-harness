@@ -3,6 +3,7 @@ services:
     name: agent-reliability-backend
     runtime: docker
     plan: free
+    region: frankfurt
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /health
@@ -10,9 +11,7 @@ services:
       - key: APP_ENV
         value: production
       - key: LLM_PROVIDER
-        value: groq
-      - key: GROQ_API_KEY
-        sync: false
+        value: rules
       - key: API_AUTH_TOKEN
         sync: false
       - key: LEGACY_DATABASE_URL
