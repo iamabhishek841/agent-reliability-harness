@@ -1,0 +1,33 @@
+name: reliability-gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install CI dependencies
+        run: pip install -r requirements-ci.txt ruff
+      - name: Static checks
+        run: |
+          python -m compileall -q backend db chaos eval frontend
+          ruff check backend db chaos eval frontend
+      - name: Validate Compose manifest
+        run: docker compose config -q
+      - name: Run labeled reliability gates
+        env:
+          LLM_PROVIDER: rules
+        run: pytest -q eval
+

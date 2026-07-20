@@ -1,0 +1,26 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {"type":"stat","title":"Requests / minute","id":1,"gridPos":{"h":7,"w":6,"x":0,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"sum(rate(agent_requests_total[5m])) * 60","legendFormat":"requests/min","refId":"A"}],"fieldConfig":{"defaults":{"unit":"reqpm"},"overrides":[]}},
+    {"type":"stat","title":"Escalation rate","id":2,"gridPos":{"h":7,"w":6,"x":6,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"sum(rate(agent_requests_total{outcome=\"escalate_to_human\"}[5m])) / clamp_min(sum(rate(agent_requests_total[5m])), 0.000001)","legendFormat":"escalation","refId":"A"}],"fieldConfig":{"defaults":{"unit":"percentunit","thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"orange","value":0.2},{"color":"red","value":0.5}]}},"overrides":[]}},
+    {"type":"stat","title":"Error rate","id":3,"gridPos":{"h":7,"w":6,"x":12,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"sum(rate(agent_requests_total{outcome=\"error\"}[5m])) / clamp_min(sum(rate(agent_requests_total[5m])), 0.000001)","legendFormat":"errors","refId":"A"}],"fieldConfig":{"defaults":{"unit":"percentunit"},"overrides":[]}},
+    {"type":"stat","title":"Estimated cost / request","id":4,"gridPos":{"h":7,"w":6,"x":18,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"sum(rate(agent_cost_estimate_usd_total[5m])) / clamp_min(sum(rate(agent_requests_total[5m])), 0.000001)","legendFormat":"USD/request","refId":"A"}],"fieldConfig":{"defaults":{"unit":"currencyUSD"},"overrides":[]}},
+    {"type":"timeseries","title":"End-to-end latency p50 / p95","id":5,"gridPos":{"h":9,"w":12,"x":0,"y":7},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"histogram_quantile(0.50, sum by (le) (rate(agent_request_latency_seconds_bucket[5m])))","legendFormat":"p50","refId":"A"},{"expr":"histogram_quantile(0.95, sum by (le) (rate(agent_request_latency_seconds_bucket[5m])))","legendFormat":"p95","refId":"B"}],"fieldConfig":{"defaults":{"unit":"s"},"overrides":[]}},
+    {"type":"timeseries","title":"Node latency p95","id":6,"gridPos":{"h":9,"w":12,"x":12,"y":7},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"histogram_quantile(0.95, sum by (node, le) (rate(agent_node_latency_seconds_bucket[5m])))","legendFormat":"{{node}}","refId":"A"}],"fieldConfig":{"defaults":{"unit":"s"},"overrides":[]}},
+    {"type":"timeseries","title":"Integration errors","id":7,"gridPos":{"h":9,"w":12,"x":0,"y":16},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"sum by (system, kind) (increase(agent_integration_errors_total[5m]))","legendFormat":"{{system}} · {{kind}}","refId":"A"}],"fieldConfig":{"defaults":{"unit":"short"},"overrides":[]}},
+    {"type":"timeseries","title":"Decision outcomes","id":8,"gridPos":{"h":9,"w":12,"x":12,"y":16},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"sum by (outcome) (increase(agent_requests_total[5m]))","legendFormat":"{{outcome}}","refId":"A"}],"fieldConfig":{"defaults":{"unit":"short"},"overrides":[]}}
+  ],
+  "refresh": "5s",
+  "schemaVersion": 41,
+  "tags": ["agents", "reliability", "production"],
+  "templating": {"list": []},
+  "time": {"from": "now-30m", "to": "now"},
+  "timezone": "browser",
+  "title": "Agent Reliability Overview",
+  "uid": "agent-overview",
+  "version": 1
+}
